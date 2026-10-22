@@ -55,21 +55,96 @@ pub struct SyscallABI {
 pub fn x86_64_abi() -> SyscallABI {
     // TODO: Fill in the x86_64 syscall ABI
     // Hint: x86_64 uses the "syscall" instruction, syscall number in rax
-    todo!()
+
+    // ****** START xisanlou add at 202603 No.1
+    //todo!()
+    SyscallABI {
+        // Architecture name: "x86_64", "aarch64", "riscv64"
+        arch: "x86_64",
+        // Instruction that triggers the syscall: "syscall", "svc #0", "ecall"
+        instruction: "syscall",
+        // Register holding the syscall number
+        id_reg: "rax",
+        // Register holding the return value
+        ret_reg: "rax",
+        // Argument registers (in order)
+        arg_regs: &["rdi", "rsi", "rdx", "r10", "r8", "r9"],
+        // Registers additionally clobbered by the syscall instruction
+        clobbered: &["rcx", "r11"],
+        // write syscall number
+        sys_write: 1,
+        // read syscall number
+        sys_read: 0,
+        // close syscall number
+        sys_close: 3,
+        // exit syscall number
+        sys_exit: 60,
+    }
+    // ****** END   xisanlou add at 202603 No.1
 }
 
 /// Return the aarch64 Linux syscall ABI description
 pub fn aarch64_abi() -> SyscallABI {
     // TODO: Fill in the aarch64 syscall ABI
     // Hint: aarch64 uses the "svc #0" instruction, syscall number in x8
-    todo!()
+
+    // ****** START xisanlou add at 202603 No.2
+    //todo!()
+    SyscallABI {
+        // Architecture name
+        arch: "aarch64",
+        // Instruction that triggers the syscall
+        instruction: "svc #0",
+        // Register holding the syscall number
+        id_reg: "x8",
+        // Register holding the return value
+        ret_reg: "x0",
+        // Argument registers (in order)
+        arg_regs: &["x0", "x1", "x2", "x3", "x4", "x5"],
+        // Registers additionally clobbered by the syscall instruction
+        clobbered: &[],
+        // write syscall number
+        sys_write: 64,
+        // read syscall number
+        sys_read: 63,
+        // close syscall number
+        sys_close: 57,
+        // exit syscall number
+        sys_exit: 93,
+    }
+    // ****** END   xisanlou add at 202603 No.2
 }
 
 /// Return the riscv64 Linux syscall ABI description
 pub fn riscv64_abi() -> SyscallABI {
     // TODO: Fill in the riscv64 syscall ABI
     // Hint: riscv64 uses the "ecall" instruction, syscall number in a7
-    todo!()
+
+    // ****** START xisanlou add at 202603 No.3
+    //todo!()
+    SyscallABI {
+        // Architecture name
+        arch: "riscv64",
+        // Instruction that triggers the syscall
+        instruction: "ecall",
+        // Register holding the syscall number
+        id_reg: "a7",
+        // Register holding the return value
+        ret_reg: "a0",
+        // Argument registers (in order)
+        arg_regs: &["a0", "a1", "a2", "a3", "a4", "a5"],
+        // Registers additionally clobbered by the syscall instruction
+        clobbered: &[],
+        // write syscall number
+        sys_write: 64,
+        // read syscall number
+        sys_read: 63,
+        // close syscall number
+        sys_close: 57,
+        // exit syscall number
+        sys_exit: 93,
+    }
+    // ****** END   xisanlou add at 202603 No.3
 }
 
 // ============================================================
@@ -88,7 +163,23 @@ pub unsafe fn syscall3(id: usize, arg0: usize, arg1: usize, arg2: usize) -> isiz
     //   - inlateout("rax") id => ret
     //   - in("rdi") arg0, in("rsi") arg1, in("rdx") arg2
     //   - out("rcx") _, out("r11") _
-    todo!()
+
+    // ****** START xisanlou add at 202603 No.4
+    //todo!()
+
+    // 执行内联汇编指令
+    use core::arch::asm;
+    let mut ret;
+    unsafe {
+        asm!(
+            "syscall",
+            inlateout("rax") id => ret,
+            in("rdi") arg0, in("rsi") arg1, in("rdx") arg2,
+            out("rcx") _, out("r11") _,
+        );
+    }
+    ret
+    // ****** END   xisanlou add at 202603 No.4
 }
 
 #[cfg(all(target_arch = "aarch64", target_os = "linux"))]
@@ -99,7 +190,23 @@ pub unsafe fn syscall3(id: usize, arg0: usize, arg1: usize, arg2: usize) -> isiz
     //   - in("x8") id
     //   - inlateout("x0") arg0 => ret
     //   - in("x1") arg1, in("x2") arg2
-    todo!()
+
+    // ****** START xisanlou add at 202603 No.5
+    //todo!()
+
+    // 执行内联汇编指令
+    use core::arch::asm;
+    let mut ret;
+    unsafe {
+        asm!(
+            "svc #0",
+            in("x8") id,
+            inlateout("x0") arg0 => ret, 
+            in("x1") arg1, in("x2") arg2,
+        );
+    }
+    ret
+    // ****** END   xisanlou add at 202603 No.5
 }
 
 // Non-Linux platforms: provide a stub so the code compiles
@@ -140,25 +247,42 @@ const NATIVE_SYS_EXIT: usize = 0;
 /// Write data from `buf` to file descriptor `fd`.
 pub fn sys_write(fd: usize, buf: &[u8]) -> isize {
     // TODO: Call syscall3 to implement write
-    todo!()
+
+    // ****** START xisanlou add at 202603 No.6
+    //todo!()
+    unsafe {syscall3(NATIVE_SYS_WRITE, fd, buf.as_ptr() as usize, buf.len())}
+    // ****** END   xisanlou add at 202603 No.6
 }
 
 /// Read data from file descriptor `fd` into `buf`.
 pub fn sys_read(fd: usize, buf: &mut [u8]) -> isize {
     // TODO: Call syscall3 to implement read
-    todo!()
+
+    // ****** START xisanlou add at 202603 No.7
+    //todo!()
+    unsafe {syscall3(NATIVE_SYS_READ, fd, buf.as_ptr() as usize, buf.len())}
+    // ****** END   xisanlou add at 202603 No.7
 }
 
 /// Close file descriptor `fd`.
 pub fn sys_close(fd: usize) -> isize {
     // TODO: Call syscall3 to implement close
-    todo!()
+
+    // ****** START xisanlou add at 202603 No.8
+    //todo!()
+    unsafe{syscall3(NATIVE_SYS_CLOSE, fd, 0, 0)}
+    // ****** END   xisanlou add at 202603 No.8
 }
 
 /// Terminate the current process.
 pub fn sys_exit(code: i32) -> ! {
     // TODO: Call syscall3 to implement exit
-    todo!()
+
+    // ****** START xisanlou add at 202603 No.9
+    // todo!()
+    unsafe{let _ = syscall3(NATIVE_SYS_EXIT, code as usize, 0, 0);}
+    panic!("Unreachable in sys_exit!");
+    // ****** END   xisanlou add at 202603 No.9
 }
 
 // ============================================================
@@ -285,10 +409,7 @@ mod tests {
     fn test_aarch64_riscv64_share_numbers() {
         let aarch64 = aarch64_abi();
         let riscv64 = riscv64_abi();
-        assert_eq!(
-            aarch64.sys_write, riscv64.sys_write,
-            "aarch64 and riscv64 share asm-generic syscall numbers"
-        );
+        assert_eq!(aarch64.sys_write, riscv64.sys_write, "aarch64 and riscv64 share asm-generic syscall numbers");
         assert_eq!(aarch64.sys_read, riscv64.sys_read);
         assert_eq!(aarch64.sys_close, riscv64.sys_close);
         assert_eq!(aarch64.sys_exit, riscv64.sys_exit);
@@ -304,11 +425,7 @@ mod tests {
         fn test_sys_write_stdout() {
             let msg = b"[syscall_wrapper] sys_write test\n";
             let ret = sys_write(1, msg);
-            assert_eq!(
-                ret,
-                msg.len() as isize,
-                "sys_write should return bytes written"
-            );
+            assert_eq!(ret, msg.len() as isize, "sys_write should return bytes written");
         }
 
         #[test]

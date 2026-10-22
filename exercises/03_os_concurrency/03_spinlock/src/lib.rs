@@ -41,7 +41,17 @@ impl<T> SpinLock<T> {
     /// Caller must ensure `unlock` is called after using the data.
     pub fn lock(&self) -> &mut T {
         // TODO
-        todo!()
+
+        // ****** START xisanlou add at 202603 No.1
+        // todo!()
+        loop {
+            if let Ok(_) = self.locked.compare_exchange(false, true, Ordering::Acquire, Ordering::Relaxed) {
+                unsafe{return &mut *self.data.get();}
+            } else {
+                core::hint::spin_loop();
+            }
+        }
+        // ****** END   xisanlou add at 202603 No.1
     }
 
     /// Release lock.
@@ -49,14 +59,26 @@ impl<T> SpinLock<T> {
     /// TODO: Set locked to false (using Release ordering)
     pub fn unlock(&self) {
         // TODO
-        todo!()
+
+        // ****** START xisanlou add at 202603 No.2
+        //todo!()
+        self.locked.store(false, Ordering::Release);
+        // ****** END   xisanlou add at 202603 No.2
     }
 
     /// Try to acquire lock without spinning.
     /// Returns Some(&mut T) on success, None if lock is busy.
     pub fn try_lock(&self) -> Option<&mut T> {
         // TODO: Single compare_exchange attempt
-        todo!()
+
+        // ****** START xisanlou add at 202603 No.3
+        // todo!()
+        if let Ok(_) = self.locked.compare_exchange(false, true, Ordering::Acquire, Ordering::Relaxed) {
+            unsafe {return Some(&mut *self.data.get());}
+        } else {
+            return None;
+        } 
+        // ****** END   xisanlou add at 202603 No.3
     }
 }
 

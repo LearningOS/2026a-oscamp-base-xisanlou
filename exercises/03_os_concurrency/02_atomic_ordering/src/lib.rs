@@ -15,10 +15,10 @@
 
 use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 
-/// Use Release-Acquire semantics to safely pass data between two threads.
-///
-/// `produce` writes data first, then sets flag with Release;
-/// `consume` reads flag with Acquire, ensuring it sees the data.
+    /// Use Release-Acquire semantics to safely pass data between two threads.
+    ///
+    /// `produce` writes data first, then sets flag with Release;
+    /// `consume` reads flag with Acquire, ensuring it sees the data.
 pub struct FlagChannel {
     data: AtomicU32,
     ready: AtomicBool,
@@ -40,7 +40,12 @@ impl FlagChannel {
     pub fn produce(&self, value: u32) {
         // TODO: Store data (choose appropriate Ordering)
         // TODO: Set ready = true (choose appropriate Ordering so data writes complete before this)
-        todo!()
+
+        // ****** START xisanlou add at 202603 No.1
+        // todo!()
+        self.data.store(value, Ordering::Relaxed);
+        self.ready.store(true, Ordering::Release);
+        // ****** END   xisanlou add at 202603 No.1
     }
 
     /// Consumer: spin-wait for ready flag, then read data.
@@ -51,7 +56,15 @@ impl FlagChannel {
     pub fn consume(&self) -> u32 {
         // TODO: Spin-wait for ready to become true (choose appropriate Ordering)
         // TODO: Read data (choose appropriate Ordering)
-        todo!()
+
+        // ****** START xisanlou add at 202603 No.2
+        // todo!()
+        loop {
+            if self.ready.load(Ordering::Acquire) {
+                return self.data.load(Ordering::Relaxed);
+            }
+        }
+        // ****** END   xisanlou add at 202603 No.2
     }
 
     /// Reset channel state
@@ -83,13 +96,28 @@ impl OnceCell {
     pub fn init(&self, val: u32) -> bool {
         // TODO: Use compare_exchange to ensure initialization only once
         // Store value on success
-        todo!()
+
+        // ****** START xisanlou add at 202603 No.3
+        // todo!()
+        if let Ok(_) = self.initialized.compare_exchange(false, true, Ordering::SeqCst, Ordering::Acquire) {
+            self.value.store(val, Ordering::Relaxed);
+            return true;
+        }
+        false
+        // ****** END   xisanlou add at 202603 No.3
     }
 
     /// Get value. Returns Some if initialized, otherwise None.
     pub fn get(&self) -> Option<u32> {
         // TODO: Check initialized flag, then read value
-        todo!()
+
+        // ****** START xisanlou add at 202603 No.4
+        // todo!()
+        if self.initialized.load(Ordering::Acquire) == true {
+            return Some(self.value.load(Ordering::Acquire));
+        }
+        None
+        // ****** END   xisanlou add at 202603 No.4
     }
 }
 
@@ -108,7 +136,9 @@ mod tests {
             ch2.produce(42);
         });
 
-        let consumer = thread::spawn(move || ch.consume());
+        let consumer = thread::spawn(move || {
+            ch.consume()
+        });
 
         producer.join().unwrap();
         let val = consumer.join().unwrap();

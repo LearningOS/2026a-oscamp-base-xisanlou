@@ -74,7 +74,24 @@ unsafe impl GlobalAlloc for BumpAllocator {
         // 5. Atomically update next to end using compare_exchange
         //    (if CAS fails, another thread raced — retry in a loop)
         // 6. Return the aligned address as a pointer
-        todo!()
+
+        // ****** START xisanlou add at 202603 No.1
+        //todo!()
+        // 获取当前已分配的地址
+        let addr = self.next.load(Ordering::SeqCst);
+        // 计算布局对齐的起始地址
+        let align = layout.align();
+        let align_up = (addr + align - 1) & !(align - 1);
+        // 分配后的地址
+        let end = align_up + layout.size();
+        // 超出heap_end边境，则返回null_mut
+        if end > self.heap_end {return null_mut();}
+        // 原子的升级next
+        match self.next.compare_exchange(addr, end, Ordering::SeqCst, Ordering::Acquire) {
+            Ok(_) => align_up as *mut u8,
+            Err(_) => null_mut(),
+        }
+        // ****** END   xisanlou add at 202603 No.1
     }
 
     unsafe fn dealloc(&self, _ptr: *mut u8, _layout: Layout) {
@@ -127,10 +144,7 @@ mod tests {
         let layout = Layout::from_size_align(64, 8).unwrap();
         let p1 = unsafe { alloc.alloc(layout) } as usize;
         let p2 = unsafe { alloc.alloc(layout) } as usize;
-        assert!(
-            p1 + 64 <= p2 || p2 + 64 <= p1,
-            "two allocations must not overlap"
-        );
+        assert!(p1 + 64 <= p2 || p2 + 64 <= p1, "two allocations must not overlap");
     }
 
     #[test]
@@ -162,9 +176,6 @@ mod tests {
         alloc.reset();
         let p2 = unsafe { alloc.alloc(layout) };
         assert!(!p2.is_null(), "should be able to allocate after reset");
-        assert_eq!(
-            p1, p2,
-            "address after reset should match the first allocation"
-        );
+        assert_eq!(p1, p2, "address after reset should match the first allocation");
     }
 }

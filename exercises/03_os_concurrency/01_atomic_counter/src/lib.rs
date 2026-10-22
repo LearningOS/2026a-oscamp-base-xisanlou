@@ -26,19 +26,31 @@ impl AtomicCounter {
     /// Hint: use `fetch_add` with `Ordering::Relaxed`
     pub fn increment(&self) -> u64 {
         // TODO
-        todo!()
+
+        // ****** START xisanlou add at 202603 No.1
+        // todo!()
+        self.value.fetch_add(1, Ordering::Relaxed)
+        // ****** END   xisanlou add at 202603 No.2
     }
 
     /// Atomically decrements by 1, returns the value **before** decrement.
     pub fn decrement(&self) -> u64 {
         // TODO
-        todo!()
+
+        // ****** START xisanlou add at 202603 No.2
+        // todo!()
+        self.value.fetch_sub(1, Ordering::Relaxed)
+        // ****** END   xisanlou add at 202603 No.2
     }
 
     /// Gets the current value.
     pub fn get(&self) -> u64 {
         // TODO
-        todo!()
+
+        // ****** START xisanlou add at 202603 No.3
+        // todo!()
+        self.value.load(Ordering::Relaxed)
+        // ****** END   xisanlou add at 202603 No.3
     }
 
     /// Atomic CAS (Compare-And-Swap) operation.
@@ -48,7 +60,11 @@ impl AtomicCounter {
     /// Hint: use `compare_exchange` with success ordering `Ordering::AcqRel` and failure ordering `Ordering::Acquire`
     pub fn compare_and_swap(&self, expected: u64, new_val: u64) -> Result<u64, u64> {
         // TODO
-        todo!()
+
+        // ****** START xisanlou add at 202603 No.4
+        // todo!()
+        self.value.compare_exchange(expected, new_val, Ordering::AcqRel, Ordering::Acquire)
+        // ****** END   xisanlou add at 202603 No.4
     }
 
     /// Multiply the value atomically using a CAS loop.
@@ -62,7 +78,20 @@ impl AtomicCounter {
         //     let new = current * multiplier;
         //     match self.compare_and_swap(current, new) { ... }
         // }
-        todo!()
+
+        // ****** START xisanlou add at 202603 No.5
+        // todo!()
+        loop {
+            let current = self.get();
+            let new = current * multiplier;
+            match self.compare_and_swap(current, new) {
+                Ok(old) =>{
+                    return old;
+                },
+                Err(_) => continue,
+            };
+        }
+        // ****** END   xisanlou add at 202603 No.5
     }
 }
 

@@ -137,7 +137,31 @@ impl Scheduler {
     ///    `sp` must be 16-byte aligned (e.g. `(stack_top - 16) & !15` to leave headroom).
     /// 3. Push a `GreenThread` with this context, state `Ready`, and `entry` stored for the wrapper to call.
     pub fn spawn(&mut self, entry: extern "C" fn()) {
-        todo!("alloc stack, init ctx with ra=thread_wrapper and aligned sp, push GreenThread(Ready, entry)")
+        // ****** START xisanlou add at 202603 No.1
+        // todo!("alloc stack, init ctx with ra=thread_wrapper and aligned sp, push GreenThread(Ready, entry)")
+        let buffer: Vec<u8>;
+        let top: usize;
+
+        use std::alloc::{alloc, Layout};
+        let layout = Layout::from_size_align(STACK_SIZE, 16).unwrap();
+        unsafe {
+            let ptr = alloc(layout);
+            buffer = Vec::from_raw_parts(ptr, STACK_SIZE, STACK_SIZE);
+            top = ptr as usize + STACK_SIZE;
+        }
+
+        let mut new_thread = GreenThread {
+            ctx: TaskContext::default(),
+            state: ThreadState::Ready,
+            _stack: Some(buffer),
+            entry: Some(entry),
+        };
+
+        new_thread.ctx.ra = thread_wrapper as *const u8 as u64;
+        new_thread.ctx.sp = (top as u64 - 16) & !15;
+
+        self.threads.push(new_thread);
+        // ****** END   xisanlou add at 202603 No.1
     }
 
     /// Run the scheduler until all threads (except the main one) are `Finished`.
@@ -146,12 +170,66 @@ impl Scheduler {
     /// 2. Loop: if all threads in `threads[1..]` are `Finished`, break; otherwise call `schedule_next()` (which may switch away and later return).
     /// 3. Clear `SCHEDULER` when done.
     pub fn run(&mut self) {
-        todo!("set SCHEDULER to self, loop until threads[1..] all Finished, call schedule_next, then clear SCHEDULER")
+        // ****** START xisanlou add at 202603 No.2
+        // todo!("set SCHEDULER to self, loop until threads[1..] all Finished, call schedule_next, then clear SCHEDULER")
+        loop {
+            if unsafe{SCHEDULER.is_null()} {
+                unsafe{SCHEDULER = self as *mut Scheduler;}
+                break;
+            } else {
+                let one_millis = std::time::Duration::from_millis(1);
+                std::thread::sleep(one_millis);
+            }
+        } 
+        
+        loop {
+            if self.threads[1..].iter().all(| thread | thread.state == ThreadState::Finished ) {
+                break;
+            }
+            self.schedule_next();
+        }
+
+        unsafe {    
+            SCHEDULER = std::ptr::null_mut();
+        }       
+        // ****** END   xisanlou add at 202603 No.2
     }
 
     /// Find the next ready thread (starting from `current + 1` round-robin), mark current as `Ready` (if not `Finished`), mark next as `Running`, set `CURRENT_THREAD_ENTRY` if the next thread has an entry, then switch to it.
     fn schedule_next(&mut self) {
-        todo!("round-robin find next Ready, set current Ready (if not Finished), next Running, CURRENT_THREAD_ENTRY, then switch_context")
+        // ****** START xisanlou add at 202603 No.3
+        // todo!("round-robin find next Ready, set current Ready (if not Finished), next Running, CURRENT_THREAD_ENTRY, then switch_context")
+        
+        if self.threads.len() == 1 {return;}
+        let current_thread = self.current;
+        let mut next_thread = self.current + 1;
+
+        loop {
+
+            if next_thread == self.threads.len() {next_thread = 1;}
+            if next_thread == self.current {
+                unsafe {
+                    switch_context(&mut *(self.threads[current_thread].ctx.as_mut_ptr()), &mut *(self.threads[0].ctx.as_mut_ptr()));
+                    panic!("Should not run!");
+                }
+            }
+
+            if self.threads[next_thread].state == ThreadState::Ready {
+                if current_thread != 0 && self.threads[current_thread].state == ThreadState::Running {
+                    self.threads[current_thread].state = ThreadState::Ready;
+                }
+                self.threads[next_thread].state = ThreadState::Running;
+                self.current = next_thread;
+
+                unsafe {
+                    CURRENT_THREAD_ENTRY = self.threads[next_thread].entry;
+                    switch_context(&mut *(self.threads[current_thread].ctx.as_mut_ptr()), &mut *(self.threads[next_thread].ctx.as_mut_ptr()));
+                }
+                break;
+            }
+            next_thread += 1;
+        }
+        // ****** END   xisanlou add at 202603 No.3
     }
 }
 
@@ -223,10 +301,7 @@ mod tests {
 
         let got = EXEC_ORDER.load(Ordering::SeqCst);
         if got != 122 {
-            panic!(
-                "EXEC_ORDER: expected 122, got {} (run with --nocapture to see stderr)",
-                got
-            );
+            panic!("EXEC_ORDER: expected 122, got {} (run with --nocapture to see stderr)", got);
         }
     }
 

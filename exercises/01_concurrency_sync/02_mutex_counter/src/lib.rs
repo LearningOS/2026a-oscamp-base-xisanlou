@@ -20,7 +20,33 @@ pub fn concurrent_counter(n_threads: usize, count_per_thread: usize) -> usize {
     // TODO: Spawn n_threads threads
     // TODO: In each thread, lock() and increment count_per_thread times
     // TODO: Join all threads, return final value
-    todo!()
+    // ****** START xisanlou add at 202603 No.1
+    //todo!()
+    // 创建计数器
+    let counter: Arc<Mutex<usize>> = Arc::new(Mutex::new(0));
+    let mut thread_handles = vec![];
+    for _ in 0..n_threads {
+        // 创建引用计数传入线程
+        let c_counter = Arc::clone(&counter);
+        // 实现Copy trait的值可以直接复制并传入
+        let count_per_thread_local = count_per_thread;
+        thread_handles.push(
+            thread::spawn(move || {
+                // 通过lock取出mutex的值进行操作
+                *c_counter.lock().unwrap() += count_per_thread_local;
+            })
+        );
+    }
+
+    for handle in thread_handles {
+        handle.join().unwrap();
+    }
+
+    // 必须传结果到新变量，否则报错
+    let result = *counter.lock().unwrap();
+    result
+
+    // ****** END   xisanlou add at 202603 No.1
 }
 
 /// Add elements to a shared vector concurrently using multiple threads.
@@ -32,7 +58,33 @@ pub fn concurrent_collect(n_threads: usize) -> Vec<usize> {
     // TODO: Create Arc<Mutex<Vec<usize>>>
     // TODO: Each thread pushes its own id
     // TODO: After joining all threads, sort the result and return
-    todo!()
+    // ****** START xisanlou add at 202603 No.2
+    //todo!()
+
+    let shared_vec = Arc::new(Mutex::new(vec![]));
+    let mut thread_handles = vec![];
+    for i in 0..n_threads {
+        // 创建引用计数传入线程
+        let c_shared_vec = Arc::clone(&shared_vec);
+        
+        thread_handles.push(
+            thread::spawn(move || {
+                // 通过lock取出mutex的值进行操作
+                let mut guard = c_shared_vec.lock().unwrap();
+                guard.push(i);
+                //guard.sort();
+            })
+        );
+    }
+
+    for handle in thread_handles {
+        handle.join().unwrap();
+    }
+    
+    let mut guard = shared_vec.lock().unwrap();
+    guard.sort();
+    guard.to_vec()
+    // ****** END   xisanlou add at 202603 No.2
 }
 
 #[cfg(test)]

@@ -53,7 +53,15 @@ pub fn run_command(program: &str, args: &[&str]) -> String {
     // TODO: Set stdout to Stdio::piped()
     // TODO: Execute with .output() and get output
     // TODO: Convert stdout to String and return
-    todo!()
+    // ****** START xisanlou add at 202603 No.1
+    //todo!()
+    let output = Command::new(program)
+        .args(args)
+        .stdout(Stdio::piped())
+        .output()
+        .expect("Failed to execute command");
+    String::from_utf8(output.stdout).unwrap()
+    // ****** END   xisanlou add at 202603 No.1
 }
 
 /// Write data to child process (cat) stdin via pipe and read its stdout output.
@@ -89,7 +97,21 @@ pub fn pipe_through_cat(input: &str) -> String {
     // TODO: Write input to child process stdin
     // TODO: Drop stdin to close pipe (otherwise cat won't exit)
     // TODO: Read output from child process stdout
-    todo!()
+    // ****** START xisanlou add at 202603 No.2
+    //todo!()
+    let mut child = Command::new("cat")
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .spawn()
+        .expect("Failed to spawn child process");
+    // as_bytes转&[str]到&[u8]
+    child.stdin.take().unwrap().write_all(input.as_bytes());
+    let mut result: String = Default::default();
+    child.stdout.take().unwrap().read_to_string(&mut result);
+    child.wait().expect("command wasn't running");
+    result
+
+    // ****** END   xisanlou add at 202603 No.2
 }
 
 /// Get child process exit code.
@@ -110,7 +132,15 @@ pub fn get_exit_code(command: &str) -> i32 {
     // TODO: Use Command::new("sh").args(["-c", command])
     // TODO: Execute and get status
     // TODO: Return exit code
-    todo!()
+
+    // ****** START xisanlou add at 202603 No.3
+    //todo!()
+    let status = Command::new("sh")
+        .args(["-c", command])
+        .status()
+        .expect("failed to execute process");
+    status.code().unwrap()
+    // ****** END   xisanlou add at 202603 No.3
 }
 
 /// Execute the given shell command and return its stdout output as a `Result`.
@@ -137,7 +167,19 @@ pub fn run_command_with_result(program: &str, args: &[&str]) -> io::Result<Strin
     // TODO: Set stdout to Stdio::piped()
     // TODO: Execute with .output() and handle Result
     // TODO: Convert stdout to String with from_utf8, mapping errors to io::Error
-    todo!()
+    // ****** START xisanlou add at 202603 No.4
+    //todo!()
+    let output = Command::new(program)
+        .args(args)
+        .stdout(Stdio::piped())
+        .output();
+        //.expect("Failed to execute command");
+    match output {
+        Ok(output2) => Ok(String::from_utf8(output2.stdout).unwrap()),
+        Err(error)  => Err(error),
+    }
+    
+    // ****** END   xisanlou add at 202603 No.4
 }
 
 /// Interact with `grep` via bidirectional pipes, filtering lines that contain a pattern.
@@ -167,7 +209,22 @@ pub fn pipe_through_grep(pattern: &str, input: &str) -> String {
     // TODO: Drop stdin to close pipe
     // TODO: Read output from child stdout line by line
     // TODO: Collect and return matching lines
-    todo!()
+    
+    // ****** START xisanlou add at 202603 No.5
+    //todo!()
+    let mut child = Command::new("grep")
+        .arg(pattern)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .spawn()
+        .expect("Failed to spawn child process");
+    // as_bytes转&[str]到&[u8]
+    child.stdin.take().unwrap().write_all(input.as_bytes());
+    let mut result: String = Default::default();
+    child.stdout.take().unwrap().read_to_string(&mut result);
+    child.wait().expect("command wasn't running");
+    result
+    // ****** END   xisanlou add at 202603 No.5
 }
 
 #[cfg(test)]

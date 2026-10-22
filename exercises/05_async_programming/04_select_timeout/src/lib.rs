@@ -21,7 +21,17 @@ where
 {
     // TODO: Use tokio::select! to race between future and sleep
     // Or use tokio::time::timeout
-    todo!()
+
+    // ****** START xisanlou add at 202603 No.1
+    // todo!()
+    let sleep_millis = sleep(Duration::from_millis(timeout_ms));
+    tokio::pin!(sleep_millis);
+    let result = tokio::select!{
+        re = future => Some(re),
+        _ = &mut sleep_millis => None,
+    };
+    result
+    // ****** END   xisanlou add at 202603 No.1
 }
 
 /// Race two async tasks, return the result of whichever finishes first.
@@ -34,7 +44,15 @@ where
 {
     // TODO: Use tokio::select! to wait for f1 and f2
     // Return the result of whichever completes first
-    todo!()
+
+    // ****** START xisanlou add at 202603 No.2
+    // todo!()
+    let result = tokio::select!{
+        r1 = f1 => r1,
+        r2 = f2 => r2,
+    };
+    result
+    // ****** END   xisanlou add at 202603 No.2
 }
 
 #[cfg(test)]
@@ -49,14 +67,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_timeout_expired() {
-        let result = with_timeout(
-            async {
-                sleep(Duration::from_millis(200)).await;
-                42
-            },
-            50,
-        )
-        .await;
+        let result = with_timeout(async {
+            sleep(Duration::from_millis(200)).await;
+            42
+        }, 50).await;
         assert_eq!(result, None);
     }
 
@@ -71,8 +85,7 @@ mod tests {
                 sleep(Duration::from_millis(200)).await;
                 "slow"
             },
-        )
-        .await;
+        ).await;
         assert_eq!(result, "fast");
     }
 
@@ -87,8 +100,7 @@ mod tests {
                 sleep(Duration::from_millis(10)).await;
                 "fast"
             },
-        )
-        .await;
+        ).await;
         assert_eq!(result, "fast");
     }
 }

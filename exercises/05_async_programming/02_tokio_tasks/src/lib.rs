@@ -17,7 +17,21 @@ pub async fn concurrent_squares(n: usize) -> Vec<usize> {
     // TODO: Create n asynchronous tasks, each computing i * i
     // TODO: Collect all JoinHandle
     // TODO: Await each one to get result
-    todo!()
+
+    // ****** START xisanlou add at 202603 No.1
+    // todo!()
+    let mut tasks = Vec::with_capacity(n);
+    for i in 0..n {
+        tasks.push(tokio::spawn(async move { i * i }));
+    }
+    let mut outputs: Vec<usize> = Vec::with_capacity(n);
+    for task in tasks {
+        outputs.push(task.await.unwrap());
+    }
+
+    outputs.sort();
+    outputs
+    // ****** END   xisanlou add at 202603 No.1
 }
 
 /// Concurrently execute multiple "time-consuming" tasks (simulated with sleep), return all results.
@@ -28,7 +42,24 @@ pub async fn parallel_sleep_tasks(n: usize, duration_ms: u64) -> Vec<usize> {
     // TODO: Create asynchronous task for each id in 0..n
     // TODO: Each task sleeps specified duration and returns its own id
     // TODO: Collect all results and sort
-    todo!()
+
+    // ****** START xisanlou add at 202603 No.2
+    // todo!()
+    let mut tasks = Vec::with_capacity(n);
+    for i in 0..n {
+        tasks.push(tokio::spawn(async move {
+            let ms = Duration::from_millis(duration_ms);
+            let _ = sleep(ms);
+            i
+        }));
+    }
+    let mut outputs = Vec::with_capacity(n);
+    for task in tasks {
+        outputs.push(task.await.unwrap());
+    }
+    outputs.sort();
+    outputs
+    // ****** END   xisanlou add at 202603 No.2
 }
 
 #[cfg(test)]
@@ -62,10 +93,6 @@ mod tests {
 
         assert_eq!(result, vec![0, 1, 2, 3, 4]);
         // Concurrent execution, total time should be much less than 5 * 100ms
-        assert!(
-            elapsed.as_millis() < 400,
-            "Tasks should run concurrently, took {}ms",
-            elapsed.as_millis()
-        );
+        assert!(elapsed.as_millis() < 400, "Tasks should run concurrently, took {}ms", elapsed.as_millis());
     }
 }

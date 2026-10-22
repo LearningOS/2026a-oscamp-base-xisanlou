@@ -119,7 +119,53 @@ unsafe impl GlobalAlloc for FreeListAllocator {
         // TODO: Step 2 — no suitable block in free_list, allocate from bump region
         //
         // Same logic as 02_bump_allocator's alloc
-        todo!()
+
+        // ****** START xisanlou add at 202603 No.1
+        //todo!()
+        // 保存分配的结果
+        //let mut new_alloc_ptr: *mut u8;
+        // 递归链表
+
+        let mut curr = self.free_list_head();
+
+        let mut prev_ptr: *mut FreeBlock = null_mut();
+        while ! curr.is_null() {
+            // 检查当前块是否合适
+            if curr as usize % align == 0 && (*curr).size >= size {
+                // 找到，则从链表中取出该块
+                if prev_ptr.is_null() {
+                    // curr是首块，需要更新块的内容
+                    //new_alloc_ptr = curr as *mut u8;
+                    self.set_free_list_head((*curr).next);
+                } else {
+                    // curr不是首块，直接更新prev_ptr
+                    //new_alloc_ptr = curr as  *mut u8;
+                    (*prev_ptr).next = curr;
+                }
+                return curr as *mut u8;
+            } else {
+                // 未找到，递归到下一级
+                prev_ptr = curr;
+                curr = (*curr).next;
+            }
+        }
+
+        // bump_allocator
+        // 获取当前已分配的地址
+        use core::sync::atomic::Ordering;
+        let addr = self.bump_next.load(Ordering::SeqCst);
+        // 计算布局对齐的起始地址
+        let align_up = (addr + align - 1) & !(align - 1);
+        // 分配后的地址
+        let end = align_up + size;
+        // 超出heap_end边境，则返回null_mut
+        if end > self.heap_end {return null_mut();}
+        // 原子的升级next
+        match self.bump_next.compare_exchange(addr, end, Ordering::SeqCst, Ordering::Acquire) {
+            Ok(_) => align_up as *mut u8,
+            Err(_) => null_mut(),
+        } 
+        // ****** END   xisanlou add at 202603 No.1
     }
 
     unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
@@ -131,7 +177,15 @@ unsafe impl GlobalAlloc for FreeListAllocator {
         // 1. Cast ptr to *mut FreeBlock
         // 2. Write FreeBlock { size, next: current list head }
         // 3. Update free_list head to ptr
-        todo!()
+
+        // ****** START xisanlou add at 202603 No.2
+        //todo!()
+        // 转换指针类型
+        let mut curr = self.free_list_head();
+        let mut ptr = ptr as *mut FreeBlock;
+        *ptr = FreeBlock { size, next: curr };
+        self.set_free_list_head(ptr);
+        // ****** END   xisanlou add at 202603 No.2
     }
 }
 
